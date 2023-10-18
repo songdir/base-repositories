@@ -1,3 +1,3 @@
 require "spec"
-require "../src/database/database_repository"
-require "../src/database/sql_functions"
+require "../src/repositories/database/database_repository"
+require "../src/repositories/database/sql_functions"
