@@ -55,7 +55,7 @@ describe DatabaseRepository do
   describe "#select_one" do
     it "must retrieve one result from the database" do
       repo = DatabaseRepository.new(db)
-      result = repo.select_one "users", ["email"], where: {username: eq? "john"}, as: String
+      result = repo.select_one? "users", ["email"], where: {username: eq? "john"}, as: String
       result.should be_a String?
       result.should eq "result of john"
     end

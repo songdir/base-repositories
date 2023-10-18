@@ -10,7 +10,7 @@ module Repositories
         "$#{index}"
       end
 
-      def select_one(from table, fields, where query, as type : Class)
+      def select_one?(from table, fields, where query, as type : Class)
         statement = build_select_statement(table, fields, query, limit: 1)
         args = get_final_values query
         @database.query_one? statement, *args, as: type
@@ -22,10 +22,9 @@ module Repositories
         @database.query_all statement, *args, as: type
       end
 
-      def exists?(from table, where query, *args)
+      def exists?(from table, where query)
         statement = build_select_statement(table, ["true"], query, limit: 1)
         args = get_final_values query
-        return_value = false
         exists = @database.query_one? statement, *args, &.read(Bool)
         exists || false
       end
