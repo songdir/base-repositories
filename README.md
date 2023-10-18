@@ -1,6 +1,6 @@
 # database-repository
 
-TODO: Write a description here
+Repositories library for Songdir web server.
 
 ## Installation
 
@@ -24,4 +24,4 @@ TODO: Write development instructions here
 
 ## Contributors
 
-- [your-name-here](https://github.com/your-github-user) - creator and maintainer
+- [Alvarocz](https://github.com/Alvarocz) - creator and maintainer
