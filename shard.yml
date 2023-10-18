@@ -1,0 +1,13 @@
+name: repositories
+version: 0.1.0
+
+authors:
+  - Alvarocz <alvaroczxp@gmail.com>
+
+dependencies:
+  pg:
+    github: will/crystal-pg
+
+crystal: 1.9.2
+
+license: MIT
