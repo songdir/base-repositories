@@ -44,15 +44,18 @@ module Repositories
 
       def update(table, set values, where query, returning : String?=nil, as type : Class = Int32)
         statement = build_update_statement(table, values.keys, query, returning)
-        return_value = nil
-        @database.query statement, *query.values do |rs|
-          if returning
+        final_query_args = get_final_values query
+        if returning
+          return_value = nil
+          @database.query statement, *{*values.values, *final_query_args} do |rs|
             rs.each do
               return_value = rs.read(type)
             end
           end
+          return_value
+        else
+          @database.query statement, *{*values.values, *final_query_args}
         end
-        return_value
       end
 
       def delete(from table, query)
@@ -60,7 +63,7 @@ module Repositories
         @database.exec statement, *query.values
       end
 
-      def build_select_statement(table, fields, query, limit : Int64?=nil)
+      def build_select_statement(table, fields, query, limit : Int32?=nil)
         String.build do |io|
           io << "SELECT "
           fields.each_with_index do |field, i|
