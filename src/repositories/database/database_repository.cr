@@ -42,6 +42,18 @@ module Repositories
         @database.exec(statement, *{*values.values, *args})
       end
 
+      def update_model(id, query, id_field = "id")
+        statement = String.build do |str|
+          str << "UPDATE " << @table << " SET "
+          params = query.keys.map_with_index(2) do |key, index|
+            "#{key}=COALESCE($#{index}, #{key})"
+          end
+          str << params.join(",")
+          str << " WHERE #{id_field}=$1"
+        end
+        @database.exec(statement, *{id, *query.values})
+      end
+
       def delete(query, *args)
         statement = build_delete_statement(@table, query)
         @database.exec(statement, *args)
