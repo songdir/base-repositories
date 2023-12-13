@@ -70,6 +70,7 @@ module Repositories
           if limit
             str << " LIMIT " << limit
           end
+          str << ';'
         end
       end
 
@@ -82,6 +83,7 @@ module Repositories
           if returning
             str << " RETURNING " << returning
           end
+          str << ';'
         end
       end
 
@@ -93,6 +95,7 @@ module Repositories
           if returning
             str << " RETURNING " << returning
           end
+          str << ';'
         end
       end
 
@@ -100,6 +103,7 @@ module Repositories
         String.build do |str|
           str << "DELETE FROM " << table
           str << " WHERE " << query
+          str << ';'
         end
       end
 
