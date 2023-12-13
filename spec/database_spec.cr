@@ -52,26 +52,27 @@ include Repositories::Database
 db = DB::Database.new
 
 describe DatabaseRepository do
-  describe "#select_one" do
+  describe "#select_one?" do
     it "must retrieve one result from the database" do
       repo = DatabaseRepository.new(db)
-      result = repo.select_one? "users", ["email"], where: {username: eq? "john"}, as: String
+      username = "john"
+      result = repo.select_one?("username=$1", username, as: String)
       result.should be_a String?
-      result.should eq "result of john"
+      result.should eq "result of #{username}"
     end
   end
 
   describe "#query_all" do
     it "must retrieve an array of strings" do
       repo = DatabaseRepository.new(db)
-      result = repo.select_many "users", ["email"], where: {admin: eq? true}, as: String
+      result = repo.select_many("admin=$1", true, as: String)
       result.should be_a Array(String)
       result.should eq ["A", "B"]
     end
 
     it "must retrieve an array of ints" do
       repo = DatabaseRepository.new(db)
-      result = repo.select_many "users", ["level"], where: {admin: eq? true}, as: Int32
+      result = repo.select_many("admin=$1", true, as: Int32)
       result.should be_a Array(Int32)
       result.should eq [1, 2]
     end
@@ -80,7 +81,7 @@ describe DatabaseRepository do
   describe "#exists?" do
     it "must retrieve false" do
       repo = DatabaseRepository.new(db)
-      result = repo.exists? "users", where: {username: eq? "john"}
+      result = repo.exists?("username=$1", "carl")
       result.should be_a Bool
       result.should be_false
     end
@@ -89,25 +90,25 @@ describe DatabaseRepository do
   describe "#build_select_statement" do
     it "must create a basic select statement" do
       repo = DatabaseRepository.new(db)
-      statement = repo.build_select_statement("albums", ["name", "year"], nil)
+      statement = repo.build_select_statement("albums", ["name", "year"])
       statement.should eq "SELECT name,year FROM albums"
     end
 
     it "must create a select statement with WHERE" do
       repo = DatabaseRepository.new(db)
-      statement = repo.build_select_statement("payments", ["reference"], {status: eq? "active"})
-      statement.should eq "SELECT reference FROM payments WHERE status = $1"
+      statement = repo.build_select_statement("payments", ["reference"], "status='active'")
+      statement.should eq "SELECT reference FROM payments WHERE status='active'"
     end
 
     it "must create a select statement with IN operator" do
       repo = DatabaseRepository.new(db)
-      statement = repo.build_select_statement("payments", ["reference"], {id: in? ["123", "234"]})
-      statement.should eq "SELECT reference FROM payments WHERE id IN ($1,$2)"
+      statement = repo.build_select_statement("payments", ["reference"], "id IN (123, 234)")
+      statement.should eq "SELECT reference FROM payments WHERE id IN (123, 234)"
     end
 
     it "must create a select statement with LIMIT" do
       repo = DatabaseRepository.new(db)
-      statement = repo.build_select_statement("payments", ["reference"], nil, limit: 3)
+      statement = repo.build_select_statement("payments", ["reference"], limit: 3)
       statement.should eq "SELECT reference FROM payments LIMIT 3"
     end
   end
@@ -129,44 +130,28 @@ describe DatabaseRepository do
   describe "#build_update_statement" do
     it "must create a basic update statement" do
       repo = DatabaseRepository.new(db)
-      statement = repo.build_update_statement("items", {"name", "value"}, {id: eq? 100})
-      statement.should eq "UPDATE items SET name=$1,value=$2 WHERE id = $3"
+      statement = repo.build_update_statement("items", {"name", "value"}, "id=100")
+      statement.should eq "UPDATE items SET name=$1,value=$2 WHERE id=100"
     end
 
     it "must create an update statement with RETURNING" do
       repo = DatabaseRepository.new(db)
-      statement = repo.build_update_statement("items", {"name", "value"}, {id: eq? 100}, returning: "id")
-      statement.should eq "UPDATE items SET name=$1,value=$2 WHERE id = $3 RETURNING id"
+      statement = repo.build_update_statement("items", {"name", "value"}, "id=100", returning: "id")
+      statement.should eq "UPDATE items SET name=$1,value=$2 WHERE id=100 RETURNING id"
     end
   end
 
   describe "#build_delete_statement" do
     it "must create a basic delete statement" do
       repo = DatabaseRepository.new(db)
-      statement = repo.build_delete_statement("engines", {type: eq? "ABC"})
-      statement.should eq "DELETE FROM engines WHERE type = $1"
+      statement = repo.build_delete_statement("engines", "type=$1")
+      statement.should eq "DELETE FROM engines WHERE type=$1"
     end
 
     it "must create a basic delete statement with comparison" do
       repo = DatabaseRepository.new(db)
-      statement = repo.build_delete_statement("engines", {power: lt? 100})
-      statement.should eq "DELETE FROM engines WHERE power < $1"
-    end
-  end
-
-  describe "#get_final_values" do
-    it "must return a tuple with expected values" do
-      repo = DatabaseRepository.new(db)
-      values = repo.get_final_values({
-        in: In.new([1, 2]),
-        gt: Gt.new(1),
-        lt: Lt.new(30),
-        gte: Gte.new(20),
-        lte: Lte.new(10.5),
-        eq: Eq.new(true),
-        neq: Neq.new('b')
-      })
-      values.should eq({[1, 2], 1, 30, 20, 10.5, true, 'b'})
+      statement = repo.build_delete_statement("engines", "power < 100")
+      statement.should eq "DELETE FROM engines WHERE power < 100"
     end
   end
 end

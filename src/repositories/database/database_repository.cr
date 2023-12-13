@@ -4,133 +4,102 @@ module Repositories
   module Database
     class DatabaseRepository
       def initialize(@database : DB::Database)
+        @table = ""
+        @fields = {
+          :all => [] of String
+        }
       end
 
-      def get_placeholder(index)
-        "$#{index}"
+      def select_one?(query, *args, as type : Class, field_set = :all)
+        statement = build_select_statement(@table, @fields[field_set], query, limit: 1)
+        @database.query_one?(statement, *args, as: type)
       end
 
-      def select_one?(from table, fields, where query, as type : Class)
-        statement = build_select_statement(table, fields, query, limit: 1)
-        args = get_final_values query
-        @database.query_one? statement, *args, as: type
+      def select_many(query, *args, as type : Class, field_set = :all)
+        statement = build_select_statement(@table, @fields[field_set], query)
+        @database.query_all(statement, *args, as: type)
       end
 
-      def select_many(from table, fields, where query, as type : Class)
-        statement = build_select_statement(table, fields, query)
-        args = get_final_values query
-        @database.query_all statement, *args, as: type
-      end
-
-      def exists?(from table, where query)
-        statement = build_select_statement(table, ["true"], query, limit: 1)
-        args = get_final_values query
-        exists = @database.query_one? statement, *args, &.read(Bool)
+      def exists?(query, *args)
+        statement = build_select_statement(@table, [1], query)
+        exists = @database.query_one?(statement, *args, &.read(Bool))
         exists || false
       end
 
-      def insert(into table, query, returning : String?=nil, as type : Class = Int32)
-        statement = build_insert_statement(table, query.keys, returning)
-        return_value = nil
-        @database.query statement, *query.values do |rs|
-          if returning
-            rs.each do
-              return_value = rs.read(type)
-            end
-          end
-        end
-        return_value
-      end
-
-      def update(table, set values, where query, returning : String?=nil, as type : Class = Int32)
-        statement = build_update_statement(table, values.keys, query, returning)
-        final_query_args = get_final_values query
+      def insert(query, returning : String?=nil, as type : Class = Int32)
+        statement = build_insert_statement(@table, query.keys.to_a, returning)
         if returning
-          return_value = nil
-          @database.query statement, *{*values.values, *final_query_args} do |rs|
-            rs.each do
-              return_value = rs.read(type)
-            end
-          end
-          return_value
-        else
-          @database.query statement, *{*values.values, *final_query_args}
+          return @database.query(statement, *query.values, &.read(type))
         end
+        @database.exec(statement, *query.values)
       end
 
-      def delete(from table, query)
-        statement = build_delete_statement(table, query)
-        @database.exec statement, *query.values
+      def update(set values, where query, *args, returning : String?=nil, as type : Class = Int32)
+        statement = build_update_statement(@table, values.keys.to_a, query, returning)
+        if returning
+          return @database.query(statement, *{*values.values, *args}, &.read(type))
+        end
+        @database.exec(statement, *{*values.values, *args})
       end
 
-      def build_select_statement(table, fields, query, limit : Int32?=nil)
-        String.build do |io|
-          io << "SELECT "
-          fields.each_with_index do |field, i|
-            sep = i < fields.size - 1 ? "," : ""
-            io << field << sep
-          end
-          io << " FROM " << table
+      def delete(query, *args)
+        statement = build_delete_statement(@table, query)
+        @database.exec(statement, *args)
+      end
+
+      def build_select_statement(table, fields, query : String?=nil, limit : Int32?=nil)
+        String.build do |str|
+          str << "SELECT "
+          str << fields.join(",")
+          str << " FROM " << table
           if query
-            io << " WHERE " << get_query_string query
+            str << " WHERE " << query
           end
           if limit
-            io << " LIMIT " << limit
+            str << " LIMIT " << limit
           end
         end
       end
 
       def build_insert_statement(table, keys, returning : String?=nil)
-        String.build do |io|
-          io << "INSERT INTO " << table
-          io << '(' << keys.join(",") << ')'
-          placeholders = keys.map_with_index(1) { |_, index| get_placeholder(index) }
-          io << " VALUES (" << placeholders.join(",") << ')'
+        String.build do |str|
+          str << "INSERT INTO " << table
+          str << '(' << keys.join(",") << ')'
+          placeholders = keys.map_with_index(1) { |_, index| placeholder_of(index) }
+          str << " VALUES (" << placeholders.join(",") << ')'
           if returning
-            io << " RETURNING " << returning
+            str << " RETURNING " << returning
           end
         end
       end
 
       def build_update_statement(table, value_keys, query, returning : String?=nil)
-        String.build do |io|
-          io << "UPDATE " << table
-          io << " SET " << get_assign_string value_keys
-          io << " WHERE " << get_query_string(query, offset: value_keys.size + 1)
+        String.build do |str|
+          str << "UPDATE " << table
+          str << " SET " << get_assign_string value_keys
+          str << " WHERE " << query
           if returning
-            io << " RETURNING " << returning
+            str << " RETURNING " << returning
           end
         end
       end
 
       def build_delete_statement(table, query)
-        String.build do |io|
-          io << "DELETE FROM " << table
-          io << " WHERE " << get_query_string query
+        String.build do |str|
+          str << "DELETE FROM " << table
+          str << " WHERE " << query
         end
       end
 
-      def get_final_values(query)
-        query.values.map &.value
+      protected def placeholder_of(index)
+        "$#{index}"
       end
 
-      private def get_assign_string(keys, offset=1)
-        result = keys.map_with_index(offset) do |key, index|
-          placeholder = get_placeholder(index)
-          "#{key}=#{placeholder}"
+      protected def get_assign_string(keys, offset=1)
+        pairs = keys.map_with_index(offset) do |key, index|
+          "#{key}=#{placeholder_of(index)}"
         end
-        result.join(",")
-      end
-
-      private def get_query_string(query, offset=1)
-        index = offset
-        result = query.map do |key, func|
-          indexes = index.step(to: index + func.size - 1).to_a
-          placeholders = indexes.map { |index| get_placeholder(index) }
-          index += indexes.size + 1
-          func.to_sql(key, placeholders)
-        end
-        result.join(",")
+        pairs.join(",")
       end
     end
   end
