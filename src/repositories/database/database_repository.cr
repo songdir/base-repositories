@@ -59,13 +59,16 @@ module Repositories
         @database.exec(statement, *args)
       end
 
-      def build_select_statement(table, fields, query : String?=nil, limit : Int32?=nil)
+      def build_select_statement(table, fields, query : String?=nil, order_by : String?=nil, limit : Int32?=nil)
         String.build do |str|
           str << "SELECT "
           str << fields.join(",")
           str << " FROM " << table
           if query
             str << " WHERE " << query
+          end
+          if order_by
+            str << " ORDER BY " << order_by
           end
           if limit
             str << " LIMIT " << limit
