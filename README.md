@@ -1,5 +1,7 @@
 # database-repository
 
+[![GitHub release](https://img.shields.io/github/release/songdir/base-repositories.svg)](https://github.com/songdir/base-repositories/releases)
+
 Repositories library for Songdir web server.
 
 ## Installation
