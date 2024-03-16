@@ -42,7 +42,7 @@ module Repositories
         @database.exec(statement, *{*values.values, *args})
       end
 
-      def update_model(id, query, id_field = "id")
+      def update_model(id, query, id_field = "id", returning : String?=nil)
         statement = String.build do |str|
           str << "UPDATE " << @table << " SET "
           params = query.keys.map_with_index(2) do |key, index|
@@ -50,6 +50,9 @@ module Repositories
           end
           str << params.join(",")
           str << " WHERE #{id_field}=$1"
+          if returning
+            str << " RETURNING #{returning}"
+          end
         end
         @database.exec(statement, *{id, *query.values})
       end
