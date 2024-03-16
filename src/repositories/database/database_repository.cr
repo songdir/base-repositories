@@ -21,7 +21,7 @@ module Repositories
       end
 
       def exists?(query, *args)
-        statement = build_select_statement(@table, [1], query)
+        statement = build_select_statement(@table, ["true"], query)
         exists = @database.query_one?(statement, *args, &.read(Bool))
         exists || false
       end
