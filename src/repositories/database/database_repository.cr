@@ -29,7 +29,7 @@ module Repositories
       def insert(query, returning : String?=nil, as type : Class = Int32)
         statement = build_insert_statement(@table, query.keys.to_a, returning)
         if returning
-          return @database.query(statement, *query.values, &.read(type))
+          return @database.query_one(statement, *query.values, as: type)
         end
         @database.exec(statement, *query.values)
       end
@@ -37,7 +37,7 @@ module Repositories
       def update(set values, where query, *args, returning : String?=nil, as type : Class = Int32)
         statement = build_update_statement(@table, values.keys.to_a, query, returning)
         if returning
-          return @database.query(statement, *{*values.values, *args}, &.read(type))
+          return @database.query_one(statement, *{*values.values, *args}, as: type)
         end
         @database.exec(statement, *{*values.values, *args})
       end
@@ -55,13 +55,16 @@ module Repositories
           end
         end
         if returning
-          return @database.query(statement, *{id, *query.values}, &.read(type))
+          return @database.query_one(statement, *{id, *query.values}, as: type)
         end
         @database.exec(statement, *{id, *query.values})
       end
 
-      def delete(query, *args)
-        statement = build_delete_statement(@table, query)
+      def delete(query, *args, returning : String?=nil, as type : Class = Int32)
+        statement = build_delete_statement(@table, query, returning)
+        if returning
+          return @database.query_one(statement, *args, as: type)
+        end
         @database.exec(statement, *args)
       end
 
@@ -70,15 +73,9 @@ module Repositories
           str << "SELECT "
           str << fields.join(",")
           str << " FROM " << table
-          if query
-            str << " WHERE " << query
-          end
-          if order_by
-            str << " ORDER BY " << order_by
-          end
-          if limit
-            str << " LIMIT " << limit
-          end
+          str << (query.nil? ? "" : " WHERE #{query}")
+          str << (order_by.nil? ? "" : " ORDER BY #{order_by}")
+          str << (limit.nil? ? "" : " LIMIT #{limit}")
         end
       end
 
@@ -88,9 +85,7 @@ module Repositories
           str << '(' << keys.join(",") << ')'
           placeholders = keys.map_with_index(1) { |_, index| placeholder_of(index) }
           str << " VALUES (" << placeholders.join(",") << ')'
-          if returning
-            str << " RETURNING " << returning
-          end
+          str << (returning.nil? ? "" : " RETURNING #{returning}")
         end
       end
 
@@ -99,16 +94,15 @@ module Repositories
           str << "UPDATE " << table
           str << " SET " << get_assign_string value_keys
           str << " WHERE " << query
-          if returning
-            str << " RETURNING " << returning
-          end
+          str << (returning.nil? ? "" : " RETURNING #{returning}")
         end
       end
 
-      def build_delete_statement(table, query)
+      def build_delete_statement(table, query, returning : String?=nil)
         String.build do |str|
           str << "DELETE FROM " << table
           str << " WHERE " << query
+          str << (returning.nil? ? "" : " RETURNING #{returning}")
         end
       end
 
