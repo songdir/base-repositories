@@ -42,7 +42,7 @@ module Repositories
         @database.exec(statement, *{*values.values, *args})
       end
 
-      def update_model(id, query, id_field = "id", returning : String?=nil)
+      def update_model(id, query, id_field = "id", returning : String?=nil, as type : Class = Int32)
         statement = String.build do |str|
           str << "UPDATE " << @table << " SET "
           params = query.keys.map_with_index(2) do |key, index|
@@ -53,6 +53,9 @@ module Repositories
           if returning
             str << " RETURNING #{returning}"
           end
+        end
+        if returning
+          return @database.query(statement, *{id, *query.values}, &.read(type))
         end
         @database.exec(statement, *{id, *query.values})
       end
@@ -76,7 +79,6 @@ module Repositories
           if limit
             str << " LIMIT " << limit
           end
-          str << ';'
         end
       end
 
@@ -89,7 +91,6 @@ module Repositories
           if returning
             str << " RETURNING " << returning
           end
-          str << ';'
         end
       end
 
@@ -101,7 +102,6 @@ module Repositories
           if returning
             str << " RETURNING " << returning
           end
-          str << ';'
         end
       end
 
@@ -109,7 +109,6 @@ module Repositories
         String.build do |str|
           str << "DELETE FROM " << table
           str << " WHERE " << query
-          str << ';'
         end
       end
 
