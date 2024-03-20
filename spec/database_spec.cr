@@ -111,6 +111,12 @@ describe DatabaseRepository do
       statement = repo.build_select_statement("payments", ["reference"], limit: 3)
       statement.should eq "SELECT reference FROM payments LIMIT 3"
     end
+
+    it "must create a select statement with ORDER BY and LIMIT" do
+      repo = DatabaseRepository.new(db)
+      statement = repo.build_select_statement("payments", ["reference"], order_by: "reference", limit: 10)
+      statement.should eq "SELECT reference FROM payments ORDER BY reference LIMIT 10"
+    end
   end
 
   describe "#build_insert_statement" do
