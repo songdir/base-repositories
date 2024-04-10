@@ -10,13 +10,13 @@ module Repositories
         }
       end
 
-      def select_one?(query, *args, as type : Class, field_set = :all)
-        statement = build_select_statement(@table, @fields[field_set], query, limit: 1)
+      def select_one?(query, *args, field_set = :all, order_by : String?=nil, as type : Class)
+        statement = build_select_statement(@table, @fields[field_set], query, order_by: order_by, limit: 1)
         @database.query_one?(statement, *args, as: type)
       end
 
-      def select_many(query, *args, field_set = :all, order_by : String?=nil, as type : Class)
-        statement = build_select_statement(@table, @fields[field_set], query, order_by: order_by)
+      def select_many(query, *args, field_set = :all, order_by : String?=nil, limit : Int32?=nil, as type : Class)
+        statement = build_select_statement(@table, @fields[field_set], query, order_by: order_by, limit: limit)
         @database.query_all(statement, *args, as: type)
       end
 
